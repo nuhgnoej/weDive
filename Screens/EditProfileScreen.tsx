@@ -12,7 +12,7 @@ import {
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { API_KEY, SUPABASE_API_URL } from "../config/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { RootStackParamList } from "../lib/navigator";
+import { NavigationProp, RootStackParamList } from "../lib/navigator";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 
@@ -20,7 +20,7 @@ type EditProfileRouteProp = RouteProp<RootStackParamList, "EditProfile">;
 
 export default function EditProfileScreen() {
   const route = useRoute<EditProfileRouteProp>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const profileData = route.params?.profile;
   const [nickname, setNickname] = useState(profileData?.nickname || "");
   const [certification, setCertification] = useState(
@@ -80,6 +80,11 @@ export default function EditProfileScreen() {
 
   const handleSave = async () => {
     try {
+      if (!nickname.trim()) {
+        Alert.alert("❌ 닉네임 필수", "닉네임을 입력해주세요.");
+        return;
+      }
+
       const token = await AsyncStorage.getItem("access_token");
       const userId = await AsyncStorage.getItem("user_id");
       if (!token || !userId) throw new Error("인증 정보 누락");
@@ -91,7 +96,7 @@ export default function EditProfileScreen() {
       }
 
       const body = {
-        id: userId,
+        user_id: userId,
         nickname,
         full_name: fullName || null,
         bio,
@@ -104,7 +109,7 @@ export default function EditProfileScreen() {
       };
 
       const url = profileData
-        ? `${SUPABASE_API_URL}/rest/v1/profiles?id=eq.${userId}`
+        ? `${SUPABASE_API_URL}/rest/v1/profiles?user_id=eq.${userId}`
         : `${SUPABASE_API_URL}/rest/v1/profiles`;
 
       const res = await fetch(url, {
@@ -124,7 +129,9 @@ export default function EditProfileScreen() {
       }
 
       Alert.alert("✅ 저장 완료", "프로필이 저장되었습니다.");
-      navigation.goBack();
+
+      // ❗ goBack() 대신 메인 화면으로 이동
+      navigation.navigate("Main");
     } catch (e: any) {
       console.error(e);
       Alert.alert("❌ 오류", e.message || "알 수 없는 오류");

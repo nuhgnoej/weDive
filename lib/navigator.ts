@@ -10,9 +10,13 @@ export type RootStackParamList = {
   ChatRooms: undefined;
   ChatRoom: { roomId: string };
   Community: undefined;
-  SignIn: undefined;
+  SignUp: undefined;
   CreateMatchRoom: undefined;
   EditProfile: { profile?: any } | undefined;
+  RoomDetail: { roomId: string };
+  RoomApplicants: { roomId: string };
+  CreatePost: undefined;
+  PostDetail: { postId: string };
 };
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

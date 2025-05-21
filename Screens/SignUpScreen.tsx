@@ -2,10 +2,14 @@
 import { useState } from "react";
 import { View, Text, TextInput, Button, Alert } from "react-native";
 import { API_KEY, SUPABASE_API_URL } from "../config/config";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
+import { NavigationProp } from "../lib/navigator";
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigation = useNavigation<NavigationProp>();
 
   const handleSignUp = async () => {
     try {
@@ -23,11 +27,7 @@ export default function SignUpScreen() {
       if (res.ok) {
         Alert.alert("✅ 회원가입 성공", "인증 이메일을 확인해주세요!");
         console.log("가입 후 응답:", data);
-      } else {
-        Alert.alert(
-          "❌ 회원가입 실패",
-          data.error?.message || "알 수 없는 오류"
-        );
+        navigation.navigate("Login");
       }
     } catch (error) {
       Alert.alert("❌ 네트워크 오류", String(error));

@@ -4,9 +4,13 @@ import BottomTabNavigator from "./BottomTabNavigator";
 import LoginScreen from "../Screens/LoginScreen";
 import SignUpScreen from "../Screens/SignUpScreen";
 import CreateMatchRoomScreen from "../Screens/CreateMatchRoomScreen";
-import ChatRoomScreen from "../Screens/ChatRoom";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EditProfileScreen from "../Screens/EditProfileScreen";
+import ChatRoomScreen from "../Screens/ChatRoomScreen";
+import RoomDetailScreen from "../Screens/RoomDetailScreen";
+import RoomApplicantsScreen from "../Screens/RoomApplicantsScreen";
+import CreatePostScreen from "../Screens/Post/CreatePostScreen";
+import PostDetailScreen from "../Screens/Post/PostDetailScreen";
 
 export default function RootNavigator() {
   const Stack = createNativeStackNavigator();
@@ -30,6 +34,10 @@ export default function RootNavigator() {
         />
         <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen name="RoomDetail" component={RoomDetailScreen} />
+        <Stack.Screen name="RoomApplicants" component={RoomApplicantsScreen} />
+        <Stack.Screen name="CreatePost" component={CreatePostScreen} />
+        <Stack.Screen name="PostDetail" component={PostDetailScreen} />
       </Stack.Navigator>
     </SafeAreaView>
   );

@@ -28,7 +28,7 @@ export default function ProfileScreen() {
       const token = await AsyncStorage.getItem("access_token");
 
       const res = await fetch(
-        `${SUPABASE_API_URL}/rest/v1/profiles?select=*&id=eq.${userId}`,
+        `${SUPABASE_API_URL}/rest/v1/profiles?select=*&user_id=eq.${userId}`,
         {
           headers: {
             apikey: API_KEY,

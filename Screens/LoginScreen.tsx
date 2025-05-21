@@ -5,7 +5,6 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../Context/AuthContext";
@@ -27,10 +26,6 @@ const LoginScreen = () => {
   const handleLogIn = async () => {
     if (!email || !password) {
       alert("이메일과 패스워드를 입력하세요.");
-      return;
-    }
-    if (!SUPABASE_API_URL || !API_KEY) {
-      alert(`env문제 발생:${SUPABASE_API_URL}`);
       return;
     }
     try {
@@ -59,7 +54,32 @@ const LoginScreen = () => {
 
       Alert.alert("✅ 로그인 성공");
       await logIn(data.access_token, data.user.email, data.user.id);
-      await navigation.navigate("Main");
+
+      // ✅ profiles 테이블에 유저 프로필 존재 여부 확인
+      const profileRes = await fetch(
+        `${SUPABASE_API_URL}/rest/v1/profiles?user_id=eq.${data.user.id}`,
+        {
+          headers: {
+            apikey: API_KEY,
+            Authorization: `Bearer ${data.access_token}`,
+          },
+        }
+      );
+      const profileData = await profileRes.json();
+
+      if (Array.isArray(profileData) && profileData.length > 0) {
+        // ✅ 프로필이 존재하면 Main 화면으로
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Main" }],
+        });
+      } else {
+        // ❗ 프로필이 없으면 온보딩 화면으로
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "EditProfile" }],
+        });
+      }
     } catch (error) {
       Alert.alert("❌ 네트워크 오류", String(error));
     }
@@ -68,9 +88,36 @@ const LoginScreen = () => {
   const handleGoogleLogin = async () => {
     try {
       const { accessToken, user } = await signInWithGoogle();
+
+      // AuthContext에 로그인 정보 저장
       await logIn(accessToken, user.email, user.id);
       console.log("✅ 로그인 성공:", user);
-      await navigation.navigate("Main");
+
+      // ✅ profiles 존재 여부 확인
+      const profileRes = await fetch(
+        `${SUPABASE_API_URL}/rest/v1/profiles?user_id=eq.${user.id}`,
+        {
+          headers: {
+            apikey: API_KEY,
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      const profileData = await profileRes.json();
+
+      if (Array.isArray(profileData) && profileData.length > 0) {
+        // ✅ 프로필 있음 → Main
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Main" }],
+        });
+      } else {
+        // ❗ 프로필 없음 → EditProfile
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "EditProfile" }],
+        });
+      }
     } catch (e: any) {
       Alert.alert("로그인 실패", e.message);
     }
@@ -106,7 +153,7 @@ const LoginScreen = () => {
 
         <TouchableOpacity
           style={styles.authButton}
-          onPress={() => navigation.navigate("SignIn")}
+          onPress={() => navigation.navigate("SignUp")}
         >
           <Ionicons name="person-add" size={24} color="white" />
           <Text style={styles.authButtonText}>이메일 계정으로 가입하기</Text>

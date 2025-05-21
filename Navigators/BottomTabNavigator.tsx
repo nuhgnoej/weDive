@@ -8,8 +8,6 @@ import { Button } from "react-native";
 import { useAuth } from "../Context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { NavigationProp } from "../lib/navigator";
-import ChatRoomsScreen from "../Screens/Main/ChatRoomsScreen";
-import ChatScreen from "../Screens/ChatScreen";
 
 export default function BottomTabNavigator() {
   const Tab = createBottomTabNavigator();
@@ -75,10 +73,9 @@ export default function BottomTabNavigator() {
         }}
       />
       <Tab.Screen name="Matching" component={MatchingScreen} />
-      <Tab.Screen name="ChatRooms" component={ChatRoomsScreen} />
+      {/* <Tab.Screen name="ChatRooms" component={ChatRoomsScreen} /> */}
       <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
-      <Tab.Screen name="Chat" component={ChatScreen} />
     </Tab.Navigator>
   );
 }
