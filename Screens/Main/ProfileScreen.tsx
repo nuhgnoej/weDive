@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  ScrollView,
 } from "react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,7 +19,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
 
 export default function ProfileScreen() {
-  const { userId } = useAuth();
+  const { user, userId } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation<NavigationProp>();
@@ -28,7 +29,7 @@ export default function ProfileScreen() {
       const token = await AsyncStorage.getItem("access_token");
 
       const res = await fetch(
-        `${SUPABASE_API_URL}/rest/v1/profiles?select=*&user_id=eq.${userId}`,
+        `${SUPABASE_API_URL}/rest/v1/profiles?select=*&id=eq.${userId}`,
         {
           headers: {
             apikey: API_KEY,
@@ -63,7 +64,10 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: "#fff" }}
+      contentContainerStyle={{ padding: 20, flexGrow: 1 }}
+    >
       <Text style={styles.title}>내 프로필</Text>
 
       {profile ? (
@@ -80,6 +84,11 @@ export default function ProfileScreen() {
               </View>
             )}
           </View>
+          <Text style={styles.infoLabel}>User ID</Text>
+          <Text style={styles.infoValue}>{userId || "??에러발생"}</Text>
+          <Text style={styles.infoLabel}>Email</Text>
+          <Text style={styles.infoValue}>{user || "??에러발생"}</Text>
+
           <Text style={styles.infoLabel}>닉네임</Text>
           <Text style={styles.infoValue}>{profile.nickname || "없음"}</Text>
 
@@ -100,8 +109,8 @@ export default function ProfileScreen() {
 
           <Text style={styles.infoLabel}>자격증</Text>
           <Text style={styles.infoValue}>
-            {profile.certification && profile.certification.length > 0
-              ? profile.certification.join(", ")
+            {profile.certifications && profile.certifications.length > 0
+              ? profile.certifications.join(", ")
               : "없음"}
           </Text>
 
@@ -127,13 +136,14 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: 20,
+    // paddingBottom: 200,
     backgroundColor: "#fff",
     flex: 1,
   },

@@ -57,7 +57,7 @@ const LoginScreen = () => {
 
       // ✅ profiles 테이블에 유저 프로필 존재 여부 확인
       const profileRes = await fetch(
-        `${SUPABASE_API_URL}/rest/v1/profiles?user_id=eq.${data.user.id}`,
+        `${SUPABASE_API_URL}/rest/v1/profiles?id=eq.${data.user.id}`,
         {
           headers: {
             apikey: API_KEY,
