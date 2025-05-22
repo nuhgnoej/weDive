@@ -11,25 +11,25 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  InteractionManager,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { RouteProp } from "@react-navigation/native";
 import { RootStackParamList } from "../lib/navigator";
-import { API_KEY, SUPABASE_API_URL } from "../config/config";
+import { API_KEY, SUPABASE_API_URL, SOCKET_SERVER_URL } from "../config/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../Context/AuthContext";
 import { io } from "socket.io-client";
+import { Keyboard } from "react-native";
 
 type ChatRoomRouteProp = RouteProp<RootStackParamList, "ChatRoom">;
 
-
-const SOCKET_SERVER_URL = "https://5e1c-221-150-137-30.ngrok-free.app"
-// const SOCKET_SERVER_URL = "http://localhost:3001"; // 🔁 변경 필요
+console.log("SOCKET_SERVER_URL: ", SOCKET_SERVER_URL);
 
 export default function ChatRoomScreen() {
   const route = useRoute<ChatRoomRouteProp>();
   const { roomId } = route.params;
-  const { user } = useAuth();
+  const { user, userId } = useAuth();
 
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -42,7 +42,8 @@ export default function ChatRoomScreen() {
       const token = await AsyncStorage.getItem("access_token");
 
       const response = await fetch(
-        `${SUPABASE_API_URL}/rest/v1/messages?room_id=eq.${roomId}&select=*&order=created_at.asc`,
+        `${SUPABASE_API_URL}/rest/v1/messages?room_id=eq.${roomId}&select=*,sender:profiles(nickname)&order=created_at.asc`,
+        // `${SUPABASE_API_URL}/rest/v1/messages?room_id=eq.${roomId}&select=*&order=created_at.asc`,
         {
           headers: {
             apikey: API_KEY,
@@ -66,7 +67,7 @@ export default function ChatRoomScreen() {
 
     socketRef.current?.emit("sendMessage", {
       room_id: roomId,
-      sender: user,
+      senderId: userId,
       content: newMessage.trim(),
     });
 
@@ -79,7 +80,10 @@ export default function ChatRoomScreen() {
       transports: ["websocket"],
     });
 
-    socketRef.current.emit("joinRoom", roomId);
+    socketRef.current.emit("joinRoom", {
+      roomId,
+      senderId: userId,
+    });
 
     socketRef.current.on("newMessage", (msg: any) => {
       setMessages((prev) => [...prev, msg]);
@@ -100,9 +104,21 @@ export default function ChatRoomScreen() {
     if (messages.length > 0) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: false });
-      }, 50);
+      }, 100);
     }
   }, [messages]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+    });
+
+    return () => {
+      showSub.remove();
+    };
+  }, []);
 
   return (
     <KeyboardAvoidingView
@@ -119,13 +135,22 @@ export default function ChatRoomScreen() {
             <View
               style={[
                 styles.messageBubble,
-                item.sender === user ? styles.myMessage : styles.otherMessage,
+                item.sender_id === userId
+                  ? styles.myMessage
+                  : styles.otherMessage,
               ]}
             >
-              <Text style={styles.messageSender}>{item.sender}</Text>
+              <Text style={styles.messageSender}>
+                {item.sender?.nickname ?? "알 수 없음"}
+              </Text>
               <Text>{item.content}</Text>
             </View>
           )}
+          onContentSizeChange={() => {
+            InteractionManager.runAfterInteractions(() => {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            });
+          }}
           contentContainerStyle={styles.chatContainer}
           style={{ flex: 1 }}
           keyboardShouldPersistTaps="handled"
@@ -164,7 +189,7 @@ const styles = StyleSheet.create({
   },
   otherMessage: {
     alignSelf: "flex-start",
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#E6F0FF",
   },
   messageSender: {
     fontWeight: "bold",
