@@ -18,10 +18,13 @@ import { RootStackParamList } from "../lib/navigator";
 import { API_KEY, SUPABASE_API_URL } from "../config/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../Context/AuthContext";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { io } from "socket.io-client";
 
 type ChatRoomRouteProp = RouteProp<RootStackParamList, "ChatRoom">;
+
+
+const SOCKET_SERVER_URL = "https://5e1c-221-150-137-30.ngrok-free.app"
+// const SOCKET_SERVER_URL = "http://localhost:3001"; // 🔁 변경 필요
 
 export default function ChatRoomScreen() {
   const route = useRoute<ChatRoomRouteProp>();
@@ -30,10 +33,10 @@ export default function ChatRoomScreen() {
 
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
-
   const flatListRef = useRef<FlatList>(null);
+  const socketRef = useRef<any>(null);
 
-  // ✅ Supabase REST API로 메시지 불러오기
+  // ✅ Supabase에서 기존 메시지 로드
   const fetchMessages = async () => {
     try {
       const token = await AsyncStorage.getItem("access_token");
@@ -57,60 +60,46 @@ export default function ChatRoomScreen() {
     }
   };
 
-  // ✅ REST API로 메시지 전송
-  const sendMessage = async () => {
+  // ✅ 메시지 전송
+  const sendMessage = () => {
     if (!newMessage.trim()) return;
 
-    try {
-      const token = await AsyncStorage.getItem("access_token");
+    socketRef.current?.emit("sendMessage", {
+      room_id: roomId,
+      sender: user,
+      content: newMessage.trim(),
+    });
 
-      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/messages`, {
-        method: "POST",
-        headers: {
-          apikey: API_KEY,
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify([
-          {
-            room_id: roomId,
-            sender: user,
-            content: newMessage.trim(),
-          },
-        ]),
-      });
-
-      const data = await response.json();
-
-      const newDataMessage = Array.isArray(data) ? data[0] : data;
-
-      if (!response.ok) {
-        throw new Error(data.message || "메시지 전송 실패");
-      }
-
-      // 로컬 메시지에 추가
-      setMessages((prev) => [...prev, newDataMessage]);
-      setNewMessage("");
-
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    } catch (error) {
-      console.error("❌ 메시지 전송 실패:", error);
-      Alert.alert("에러", "메시지를 전송하지 못했습니다.");
-    }
+    setNewMessage("");
   };
 
-  // ✅ 최초 1회 메시지 불러오기
+  // ✅ 소켓 연결 및 수신 이벤트 처리
+  useEffect(() => {
+    socketRef.current = io(SOCKET_SERVER_URL, {
+      transports: ["websocket"],
+    });
+
+    socketRef.current.emit("joinRoom", roomId);
+
+    socketRef.current.on("newMessage", (msg: any) => {
+      setMessages((prev) => [...prev, msg]);
+    });
+
+    return () => {
+      socketRef.current.disconnect();
+    };
+  }, [roomId]);
+
+  // ✅ 메시지 불러오기 (최초 1회)
   useEffect(() => {
     fetchMessages();
   }, []);
 
+  // ✅ 스크롤 자동 이동
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false }); // 입장 시 자동 스크롤
+        flatListRef.current?.scrollToEnd({ animated: false });
       }, 50);
     }
   }, [messages]);
@@ -160,10 +149,6 @@ export default function ChatRoomScreen() {
 
 // ✅ 스타일 정의
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
   chatContainer: {
     padding: 16,
   },

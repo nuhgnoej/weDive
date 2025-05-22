@@ -72,10 +72,9 @@ export default function BottomTabNavigator() {
           ),
         }}
       />
-      <Tab.Screen name="Matching" component={MatchingScreen} />
-      {/* <Tab.Screen name="ChatRooms" component={ChatRoomsScreen} /> */}
+      {user && <Tab.Screen name="Matching" component={MatchingScreen} /> }
       <Tab.Screen name="Community" component={CommunityScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      {user &&<Tab.Screen name="Profile" component={ProfileScreen} />}
     </Tab.Navigator>
   );
 }
