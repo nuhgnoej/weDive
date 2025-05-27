@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NavigationProp, RootStackParamList } from "../lib/navigator";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import { useAuth } from "../Context/AuthContext";
 
 type EditProfileRouteProp = RouteProp<RootStackParamList, "EditProfile">;
 
@@ -23,9 +24,6 @@ export default function EditProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
   const profileData = route.params?.profile;
   const [nickname, setNickname] = useState(profileData?.nickname || "");
-  const [certification, setCertification] = useState(
-    (profileData?.certification && profileData.certification.join(", ")) || ""
-  );
   const [bio, setBio] = useState(profileData?.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(profileData?.avatar_url || "");
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -36,7 +34,27 @@ export default function EditProfileScreen() {
   );
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 50 }, (_, i) => currentYear - i); // 최근 50년
+  const [certifications, setCertifications] = useState<string[]>([]);
+  const [selectedCert, setSelectedCert] = useState("");
+  const allCerts = [
+    "PADI 프리다이버",
+    "AIDA 1",
+    "AIDA 2",
+    "SSI 프리다이버",
+    "NAUI 스쿠버",
+    "CMAS 1 Star",
+  ];
+  const { userId, user } = useAuth();
+  const addCertification = () => {
+    if (selectedCert && !certifications.includes(selectedCert)) {
+      setCertifications((prev) => [...prev, selectedCert]);
+      setSelectedCert(""); // 초기화
+    }
+  };
 
+  const removeCertification = (cert: string) => {
+    setCertifications((prev) => prev.filter((c) => c !== cert));
+  };
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -87,6 +105,7 @@ export default function EditProfileScreen() {
 
       const token = await AsyncStorage.getItem("access_token");
       const userId = await AsyncStorage.getItem("user_id");
+
       if (!token || !userId) throw new Error("인증 정보 누락");
 
       let finalAvatarUrl = avatarUrl;
@@ -96,20 +115,19 @@ export default function EditProfileScreen() {
       }
 
       const body = {
-        user_id: userId,
+        id: userId,
+        email: user,
         nickname,
         full_name: fullName || null,
         bio,
         avatar_url: finalAvatarUrl,
         gender: gender || null,
         birth_year: birthYear ? parseInt(birthYear) : null,
-        certification: certification
-          ? certification.split(",").map((c) => c.trim())
-          : [],
+        certifications,
       };
 
       const url = profileData
-        ? `${SUPABASE_API_URL}/rest/v1/profiles?user_id=eq.${userId}`
+        ? `${SUPABASE_API_URL}/rest/v1/profiles?id=eq.${userId}`
         : `${SUPABASE_API_URL}/rest/v1/profiles`;
 
       const res = await fetch(url, {
@@ -138,8 +156,19 @@ export default function EditProfileScreen() {
     }
   };
 
+  useEffect(() => {
+    if (
+      profileData?.certifications &&
+      Array.isArray(profileData.certifications)
+    ) {
+      setCertifications(profileData.certifications);
+    }
+  }, [profileData]);
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
       <Text style={styles.title}>
         {profileData ? "프로필 수정" : "프로필 등록"}
       </Text>
@@ -158,6 +187,18 @@ export default function EditProfileScreen() {
         <Text style={styles.changeText}>프로필 사진 선택</Text>
       </TouchableOpacity>
 
+      <TextInput
+        style={styles.input}
+        placeholder={`User ID: ${userId as string}`}
+        editable={false}
+        selectTextOnFocus={false} // 눌러도 포커스 안 가게
+      />
+      <TextInput
+        style={styles.input}
+        placeholder={`Email: ${user}`}
+        editable={false}
+        selectTextOnFocus={false} // 눌러도 포커스 안 가게
+      />
       <TextInput
         style={styles.input}
         placeholder="닉네임"
@@ -213,12 +254,38 @@ export default function EditProfileScreen() {
           ))}
         </Picker>
       </View>
-      <TextInput
-        style={styles.input}
-        placeholder="자격증 (쉼표로 구분)"
-        value={certification}
-        onChangeText={setCertification}
-      />
+
+      <Text style={styles.label}>자격증</Text>
+      <View style={styles.certPickerWrapper}>
+        <View style={{ flex: 1 }}>
+          <Picker
+            selectedValue={selectedCert}
+            onValueChange={(itemValue) => setSelectedCert(itemValue)}
+            mode="dropdown"
+          >
+            <Picker.Item label="선택" value="" />
+            {allCerts.map((cert) => (
+              <Picker.Item key={cert} label={cert} value={cert} />
+            ))}
+          </Picker>
+        </View>
+        <TouchableOpacity onPress={addCertification} style={styles.addButton}>
+          <Text style={{ color: "#fff" }}>추가</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {certifications.map((cert) => (
+          <View key={cert} style={styles.certBadge}>
+            <Text style={styles.certText}>{cert}</Text>
+            <TouchableOpacity onPress={() => removeCertification(cert)}>
+              <Text style={styles.removeCert}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+
+      <Text style={styles.label}>자기소개</Text>
       <TextInput
         style={[styles.input, { height: 100 }]}
         placeholder="소개글"
@@ -239,6 +306,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#fff",
     flex: 1,
+    // paddingBottom: 40,
   },
   title: {
     fontSize: 22,
@@ -330,5 +398,42 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 8,
     marginBottom: 15,
+  },
+  certPickerWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 15,
+    borderWidth: 1, // ✅ 추가
+    borderColor: "#ccc", // ✅ 추가
+    borderRadius: 8, // ✅ 추가
+    paddingHorizontal: 8, // 📦 여백도 살짝 넣으면 더 정리됨
+  },
+
+  addButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+
+  certBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#eee",
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginVertical: 4,
+  },
+
+  certText: {
+    marginRight: 6,
+    color: "#333",
+  },
+
+  removeCert: {
+    fontWeight: "bold",
+    color: "#999",
   },
 });
